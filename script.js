@@ -36,22 +36,42 @@ function updateScoreboard() {
   computerScoreEl.textContent = score.computer;
 }
 
+const SHUFFLE_KEYS = Object.keys(HANDS);
+const SHUFFLE_INTERVAL_MS = 80;
+const SHUFFLE_DURATION_MS = 900;
+
 async function play(playerHand) {
   if (isPlaying) return;
   isPlaying = true;
   setButtonsDisabled(true);
 
-  resultEl.textContent = "ポン！";
+  // Decide the computer's hand up front so the shuffle below is purely
+  // visual and never influenced by (or made to look like it's reacting to)
+  // the player's choice.
+  const computerHand = pickComputerHand();
+
+  resultEl.textContent = "せーの...";
   resultEl.className = "result-message";
   playerHandEl.textContent = HANDS[playerHand].emoji;
-  computerHandEl.textContent = "🤔";
 
-  computerHandEl.classList.add("shake");
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  computerHandEl.classList.remove("shake");
+  computerHandEl.classList.add("shuffling");
+  const shuffleStart = Date.now();
+  let shuffleIndex = 0;
+  await new Promise((resolve) => {
+    const shuffleTimer = setInterval(() => {
+      computerHandEl.textContent = HANDS[SHUFFLE_KEYS[shuffleIndex % SHUFFLE_KEYS.length]].emoji;
+      shuffleIndex += 1;
+      if (Date.now() - shuffleStart >= SHUFFLE_DURATION_MS) {
+        clearInterval(shuffleTimer);
+        resolve();
+      }
+    }, SHUFFLE_INTERVAL_MS);
+  });
+  computerHandEl.classList.remove("shuffling");
 
-  const computerHand = pickComputerHand();
   computerHandEl.textContent = HANDS[computerHand].emoji;
+  computerHandEl.classList.add("reveal");
+  setTimeout(() => computerHandEl.classList.remove("reveal"), 400);
 
   const outcome = judge(playerHand, computerHand);
 
